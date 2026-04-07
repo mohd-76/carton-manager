@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Carton Manager</title>
     <style>
-        :root { --bg: #0f172a; --card: #1e293b; --accent: #22c55e; --text: #f8fafc; }
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #22c55e; --text: #f8fafc; --danger: #ef4444; --warning: #eab308; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); margin: 0; }
         header { padding: 15px; background: #020617; text-align: center; border-bottom: 1px solid #334155; position: sticky; top: 0; z-index: 10; }
         .container { padding: 15px; max-width: 600px; margin: auto; }
@@ -13,8 +13,8 @@
         h2, h3 { margin-top: 0; color: var(--accent); }
         
         /* Navigation Tabs */
-        .nav-tabs { display: flex; gap: 10px; margin-bottom: 15px; }
-        .nav-btn { flex: 1; padding: 12px; background: #334155; color: white; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .nav-tabs { display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
+        .nav-btn { flex: 1; padding: 10px; background: #334155; color: white; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; min-width: 100px; font-size: 14px;}
         .nav-btn.active { background: var(--accent); color: #020617; }
         
         input, select, button { 
@@ -25,6 +25,12 @@
         button.action-btn:active { opacity: 0.8; }
         .secondary-btn { background: #334155; color: white; margin-top: 10px;}
         
+        /* Action Buttons */
+        .icon-btn { padding: 6px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; border: none; margin-left: 5px; font-weight: bold; }
+        .btn-edit { background: var(--warning); color: #000; }
+        .btn-delete { background: var(--danger); color: #fff; }
+        .btn-complete { background: var(--accent); color: #000; padding: 8px 12px; width: 100%; margin-top: 10px;}
+        
         .list-item { 
             padding: 15px; border-bottom: 1px solid #334155; cursor: pointer; 
             display: flex; justify-content: space-between; align-items: center;
@@ -34,64 +40,83 @@
         .hidden { display: none !important; }
         .loading-screen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; }
         .badge { background:#3b82f6; color: white; font-size:10px; padding:3px 6px; border-radius:4px; margin-left:8px; text-transform: uppercase; }
+        
+        .filter-row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+        .filter-row input { margin: 0; }
     </style>
 </head>
 <body>
 
 <div id="loadingPage" class="loading-screen">
-    <h3>📦 Syncing...</h3>
+    <h3>📦 Syncing Data...</h3>
 </div>
 
 <div id="loginPage" class="loading-screen hidden">
     <div style="text-align: center;">
         <h2>📦 Carton Manager</h2>
-        <p>Manage your store pickups efficiently</p>
+        <p>Global Operations & Pickup Tracking</p>
         <button class="action-btn" onclick="login()" style="width: auto; padding: 12px 30px;">Login with Google</button>
-        <p id="loginError" style="color: #ef4444; font-size: 0.9rem; margin-top: 10px;"></p>
+        <p id="loginError" style="color: var(--danger); font-size: 0.9rem; margin-top: 10px;"></p>
     </div>
 </div>
 
 <div id="app" class="hidden">
     <header>
         <strong>Carton Manager</strong><br>
-        <small id="userName"></small> | <a href="#" onclick="logout()" style="color:#ef4444; font-size: 0.8rem; text-decoration: none;">Logout</a>
+        <small id="userName"></small> | <a href="#" onclick="logout()" style="color:var(--danger); font-size: 0.8rem; text-decoration: none;">Logout</a>
     </header>
 
     <div class="container">
         
         <div class="nav-tabs" id="mainNav">
-            <button class="nav-btn active" id="btnTabStores" onclick="showStoresTab()">🏪 Stores</button>
-            <button class="nav-btn" id="btnTabUpcoming" onclick="showUpcomingTab()">⏱️ Upcoming</button>
+            <button class="nav-btn active" id="btnTabStores" onclick="switchTab('storesPage')">🏪 Stores</button>
+            <button class="nav-btn" id="btnTabUpcoming" onclick="switchTab('upcomingPage')">⏱️ Upcoming</button>
+            <button class="nav-btn" id="btnTabCompleted" onclick="switchTab('completedPage')">✅ Completed</button>
         </div>
 
-        <div id="storesPage">
+        <div id="storesPage" class="tab-content">
             <div class="card">
                 <h3>+ Add Store</h3>
                 <input id="s_name" placeholder="Store Name">
                 <input id="s_location" placeholder="Location">
-                <input id="s_phone" placeholder="Phone (Optional)">
+                <input id="s_phone" placeholder="Phone Number (Required)" type="tel">
                 <button class="action-btn" onclick="addStore()">Save Store</button>
             </div>
             <div class="card">
-                <h3>Your Stores</h3>
+                <h3>Your Network</h3>
                 <p style="font-size: 0.8rem; color: #94a3b8; margin-top: -10px;">Tap a store to schedule/view pickups</p>
                 <div id="storesList">Loading stores...</div>
             </div>
         </div>
 
-        <div id="upcomingPage" class="hidden">
+        <div id="upcomingPage" class="tab-content hidden">
             <div class="card">
-                <h3>Scheduled Pickups</h3>
-                <p style="font-size: 0.8rem; color: #94a3b8; margin-top: -10px;">Showing today and future pickups across all stores.</p>
+                <h3>Pending Operations</h3>
+                <p style="font-size: 0.8rem; color: #94a3b8; margin-top: -10px;">Pickups that need to be completed.</p>
                 <div id="upcomingList">Loading upcoming...</div>
             </div>
         </div>
 
-        <div id="detailsPage" class="hidden">
+        <div id="completedPage" class="tab-content hidden">
+            <div class="card">
+                <h3>Completed Pickups</h3>
+                <p style="font-size: 0.8rem; color: #94a3b8; margin-top: -10px;">Filter by date range</p>
+                
+                <div class="filter-row">
+                    <input type="date" id="filterStart" onchange="loadCompletedGlobal()">
+                    <span style="color: #94a3b8;">to</span>
+                    <input type="date" id="filterEnd" onchange="loadCompletedGlobal()">
+                </div>
+                
+                <div id="completedList" style="margin-top: 15px;">Loading history...</div>
+            </div>
+        </div>
+
+        <div id="detailsPage" class="tab-content hidden">
             <div class="card" id="storeInfo"></div>
             
             <div class="card">
-                <h3>Schedule Pickup</h3>
+                <h3 id="formTitle">Schedule Pickup</h3>
                 <input type="datetime-local" id="pickupTime">
                 <input type="number" id="pickupKg" placeholder="Estimated Weight (KG)">
                 
@@ -104,7 +129,8 @@
                 </select>
                 <input id="customDays" type="number" placeholder="Enter interval in days (e.g. 12)" class="hidden">
 
-                <button class="action-btn" onclick="addPickup()">Confirm Pickup</button>
+                <button id="btnSavePickup" class="action-btn" onclick="savePickup()">Confirm Pickup</button>
+                <button id="btnCancelEdit" class="secondary-btn hidden" onclick="cancelEdit()">Cancel Edit</button>
             </div>
 
             <div class="card">
@@ -112,7 +138,7 @@
                 <div id="historyList"></div>
             </div>
 
-            <button class="secondary-btn action-btn" onclick="showStoresTab()">⬅ Back to Stores</button>
+            <button class="secondary-btn action-btn" onclick="switchTab('storesPage')">⬅ Back to Stores</button>
         </div>
 
     </div>
@@ -120,7 +146,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, query, where, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, query, where, Timestamp, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { getAuth, GoogleAuthProvider, signOut, onAuthStateChanged, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const firebaseConfig = {
@@ -135,6 +161,8 @@
     const provider = new GoogleAuthProvider();
 
     let currentStoreId = null;
+    let editingPickupId = null; 
+    let allStoresMap = {}; // Cache for fast lookups
 
     onAuthStateChanged(auth, async (user) => {
         document.getElementById("loadingPage").classList.add("hidden");
@@ -142,7 +170,8 @@
             document.getElementById("loginPage").classList.add("hidden");
             document.getElementById("app").classList.remove("hidden");
             document.getElementById("userName").innerText = user.displayName;
-            showStoresTab(); // Default view on load
+            await cacheStores();
+            switchTab('storesPage'); 
         } else {
             document.getElementById("loginPage").classList.remove("hidden");
             document.getElementById("app").classList.add("hidden");
@@ -162,39 +191,49 @@
 
     window.logout = () => signOut(auth);
 
-    // --- NAVIGATION LOGIC ---
-    window.showStoresTab = () => {
-        document.getElementById("mainNav").classList.remove("hidden");
-        document.getElementById("btnTabStores").classList.add("active");
-        document.getElementById("btnTabUpcoming").classList.remove("active");
-        
-        document.getElementById("storesPage").classList.remove("hidden");
-        document.getElementById("upcomingPage").classList.add("hidden");
-        document.getElementById("detailsPage").classList.add("hidden");
-        loadStores();
-    };
+    // --- CACHE & TAB LOGIC ---
+    async function cacheStores() {
+        if (!auth.currentUser) return;
+        const snap = await getDocs(query(collection(db, "stores"), where("userId", "==", auth.currentUser.uid)));
+        allStoresMap = {};
+        snap.forEach(s => allStoresMap[s.id] = s.data().name);
+    }
 
-    window.showUpcomingTab = () => {
-        document.getElementById("mainNav").classList.remove("hidden");
-        document.getElementById("btnTabUpcoming").classList.add("active");
-        document.getElementById("btnTabStores").classList.remove("active");
+    window.switchTab = (tabId) => {
+        // Manage Nav Buttons
+        document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+        if(tabId === 'storesPage') document.getElementById('btnTabStores').classList.add('active');
+        if(tabId === 'upcomingPage') document.getElementById('btnTabUpcoming').classList.add('active');
+        if(tabId === 'completedPage') document.getElementById('btnTabCompleted').classList.add('active');
         
-        document.getElementById("upcomingPage").classList.remove("hidden");
-        document.getElementById("storesPage").classList.add("hidden");
-        document.getElementById("detailsPage").classList.add("hidden");
-        loadUpcomingGlobal();
+        // Ensure main nav is visible
+        document.getElementById("mainNav").classList.remove("hidden");
+
+        // Hide all content, show selected
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+        document.getElementById(tabId).classList.remove('hidden');
+
+        // Load correct data
+        if(tabId === 'storesPage') loadStores();
+        if(tabId === 'upcomingPage') loadUpcomingGlobal();
+        if(tabId === 'completedPage') loadCompletedGlobal();
+        
+        // Reset specific views
+        cancelEdit(); 
     };
 
     // --- STORE LOGIC ---
     window.addStore = async () => {
         const name = document.getElementById("s_name").value;
         const loc = document.getElementById("s_location").value;
-        if(!name || !loc) return alert("Please fill Name and Location");
+        const phone = document.getElementById("s_phone").value;
+        
+        if(!name || !loc || !phone) return alert("Please fill Name, Location, AND Phone Number");
 
         await addDoc(collection(db, "stores"), {
             name: name,
             location: loc,
-            phone: document.getElementById("s_phone").value,
+            phone: phone,
             userId: auth.currentUser.uid,
             createdAt: Timestamp.now()
         });
@@ -202,59 +241,44 @@
         document.getElementById("s_name").value = "";
         document.getElementById("s_location").value = "";
         document.getElementById("s_phone").value = "";
+        
+        await cacheStores();
         loadStores();
     };
 
     async function loadStores() {
         if (!auth.currentUser) return;
-        const q = query(collection(db, "stores"), where("userId", "==", auth.currentUser.uid));
-        const snap = await getDocs(q);
+        const snap = await getDocs(query(collection(db, "stores"), where("userId", "==", auth.currentUser.uid)));
         const list = document.getElementById("storesList");
         list.innerHTML = snap.empty ? "<p style='color:#cbd5e1; padding:10px;'>No stores added yet.</p>" : "";
         
         snap.forEach(docSnap => {
             const d = docSnap.data();
             list.innerHTML += `
-                <div class="list-item" onclick="viewStore('${docSnap.id}', '${d.name}', '${d.location}')">
+                <div class="list-item" onclick="viewStore('${docSnap.id}', '${d.name}', '${d.location}', '${d.phone}')">
                     <span><strong>${d.name}</strong><br><small>📍 ${d.location}</small></span>
                     <span>➔</span>
                 </div>`;
         });
     }
 
-    // --- UPCOMING GLOBAL DASHBOARD LOGIC ---
+    // --- UPCOMING GLOBAL DASHBOARD ---
     async function loadUpcomingGlobal() {
-        if (!auth.currentUser) return;
         const list = document.getElementById("upcomingList");
         list.innerHTML = "Fetching schedules...";
 
-        // 1. Get all stores to map IDs to Store Names
-        const storesSnap = await getDocs(query(collection(db, "stores"), where("userId", "==", auth.currentUser.uid)));
-        let storeMap = {};
-        storesSnap.forEach(s => storeMap[s.id] = s.data().name);
-
-        // 2. Get all pickups for user
-        const pickupSnap = await getDocs(query(collection(db, "pickups"), where("userId", "==", auth.currentUser.uid)));
-        
+        const snap = await getDocs(query(collection(db, "pickups"), where("userId", "==", auth.currentUser.uid)));
         let upcoming = [];
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Start of today
-
-        pickupSnap.forEach(p => {
-            let pd = p.data();
-            let pDate = new Date(pd.time);
-            
-            // Only keep pickups that are today or in the future
-            if (pDate >= today) {
-                upcoming.push(pd);
+        snap.forEach(p => {
+            if(p.data().status !== "Completed") {
+                upcoming.push({ id: p.id, ...p.data() });
             }
         });
 
-        // 3. Sort by date (soonest first)
         upcoming.sort((a,b) => new Date(a.time) - new Date(b.time));
 
         if (upcoming.length === 0) {
-            list.innerHTML = "<p style='color:#cbd5e1; padding:10px;'>You have no upcoming pickups scheduled.</p>";
+            list.innerHTML = "<p style='color:#cbd5e1; padding:10px;'>All caught up! No pending operations.</p>";
             return;
         }
 
@@ -262,36 +286,102 @@
         upcoming.forEach(pd => {
             const dateObj = new Date(pd.time);
             const dateStr = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + ' @ ' + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            const storeName = storeMap[pd.storeId] || "Deleted Store";
+            const storeName = allStoresMap[pd.storeId] || "Deleted Store";
             const freqBadge = pd.freq !== "one" ? `<span class="badge">🔁 ${pd.freq}</span>` : '';
             
             list.innerHTML += `
-                <div class="list-item" style="flex-direction:column; align-items:flex-start; border-left: 4px solid var(--accent);">
-                    <strong style="color: var(--accent); font-size: 1.1rem;">${storeName}</strong>
-                    <div style="display:flex; justify-content:space-between; width:100%; margin-top:8px;">
+                <div class="list-item" style="flex-direction:column; align-items:flex-start; border-left: 4px solid var(--warning);">
+                    <strong style="color: var(--warning); font-size: 1.1rem;">${storeName}</strong>
+                    <div style="display:flex; justify-content:space-between; width:100%; margin-top:8px; align-items:center;">
                         <span style="font-size: 0.9rem;">🗓️ ${dateStr} ${freqBadge}</span>
                         <strong>📦 ${pd.kg} KG</strong>
                     </div>
+                    <button class="icon-btn btn-complete" onclick="markComplete('${pd.id}', true)">✅ Mark Order Complete</button>
                 </div>`;
         });
     }
 
-    // --- INDIVIDUAL STORE PICKUPS ---
-    window.viewStore = async (id, name, loc) => {
-        currentStoreId = id;
-        document.getElementById("mainNav").classList.add("hidden"); // Hide tabs when inside a store
-        document.getElementById("storeInfo").innerHTML = `<h2>${name}</h2><p style="margin:0; color:#cbd5e1;">📍 ${loc}</p>`;
+    // --- COMPLETED GLOBAL DASHBOARD ---
+    window.loadCompletedGlobal = async () => {
+        const list = document.getElementById("completedList");
+        list.innerHTML = "Filtering records...";
+
+        // Get filter dates
+        const startInput = document.getElementById("filterStart").value;
+        const endInput = document.getElementById("filterEnd").value;
         
-        document.getElementById("storesPage").classList.add("hidden");
-        document.getElementById("upcomingPage").classList.add("hidden");
+        const snap = await getDocs(query(collection(db, "pickups"), where("userId", "==", auth.currentUser.uid)));
+        let completed = [];
+        
+        snap.forEach(p => {
+            const pd = p.data();
+            if(pd.status === "Completed") {
+                // Apply Date Filters if selected
+                const pickupDate = new Date(pd.time).setHours(0,0,0,0);
+                let isValid = true;
+                
+                if (startInput) {
+                    const sDate = new Date(startInput).setHours(0,0,0,0);
+                    if (pickupDate < sDate) isValid = false;
+                }
+                if (endInput) {
+                    const eDate = new Date(endInput).setHours(23,59,59,999);
+                    if (pickupDate > eDate) isValid = false;
+                }
+                
+                if(isValid) completed.push({ id: p.id, ...pd });
+            }
+        });
+
+        // Sort by completion time or scheduled time (descending - newest first)
+        completed.sort((a,b) => new Date(b.time) - new Date(a.time));
+
+        if (completed.length === 0) {
+            list.innerHTML = "<p style='color:#cbd5e1; padding:10px;'>No completed records found for this period.</p>";
+            return;
+        }
+
+        list.innerHTML = "";
+        let totalKg = 0;
+
+        completed.forEach(pd => {
+            totalKg += Number(pd.kg);
+            const dateObj = new Date(pd.time);
+            const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const storeName = allStoresMap[pd.storeId] || "Deleted Store";
+            
+            list.innerHTML += `
+                <div class="list-item" style="flex-direction:column; align-items:flex-start; border-left: 4px solid var(--accent);">
+                    <strong style="color: var(--accent); font-size: 1rem;">${storeName}</strong>
+                    <div style="display:flex; justify-content:space-between; width:100%; margin-top:5px;">
+                        <span style="font-size: 0.9rem; color: #94a3b8;">${dateStr}</span>
+                        <strong>📦 ${pd.kg} KG</strong>
+                    </div>
+                </div>`;
+        });
+        
+        // Prepend Summary
+        list.innerHTML = `<div style="padding:10px; background:#334155; border-radius:8px; margin-bottom:15px; text-align:center;">
+            <strong>Total Volume: ${totalKg} KG</strong>
+        </div>` + list.innerHTML;
+    };
+
+
+    // --- INDIVIDUAL STORE & EDIT/DELETE LOGIC ---
+    window.viewStore = async (id, name, loc, phone) => {
+        currentStoreId = id;
+        document.getElementById("mainNav").classList.add("hidden"); 
+        
+        document.getElementById("storeInfo").innerHTML = `
+            <h2>${name}</h2>
+            <p style="margin:0; color:#cbd5e1;">📍 ${loc}</p>
+            <p style="margin:5px 0 0 0; color:#cbd5e1; font-size:0.9rem;">📞 ${phone}</p>
+        `;
+        
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
         document.getElementById("detailsPage").classList.remove("hidden");
         
-        const now = new Date();
-        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-        document.getElementById("pickupTime").value = now.toISOString().slice(0,16);
-
-        document.getElementById("pickupFreq").value = "one";
-        toggleCustom();
+        cancelEdit(); // Reset form
         loadStorePickups();
     };
 
@@ -299,7 +389,7 @@
         document.getElementById("customDays").classList.toggle("hidden", document.getElementById("pickupFreq").value !== "custom");
     };
 
-    window.addPickup = async () => {
+    window.savePickup = async () => {
         const kg = document.getElementById("pickupKg").value;
         const time = document.getElementById("pickupTime").value;
         const freq = document.getElementById("pickupFreq").value;
@@ -313,42 +403,124 @@
         else if(freq === "monthly") interval = 30;
         else if(freq === "custom") interval = parseInt(customDays) || 0;
 
-        await addDoc(collection(db, "pickups"), {
+        const pickupData = {
             storeId: currentStoreId,
             time: time,
             kg: kg,
             intervalDays: interval,
             freq: freq,
-            status: "Pending",
             userId: auth.currentUser.uid,
-            loggedAt: Timestamp.now()
-        });
+            lastModified: Timestamp.now()
+        };
 
-        document.getElementById("pickupKg").value = "";
+        if (editingPickupId) {
+            // Update existing
+            await updateDoc(doc(db, "pickups", editingPickupId), pickupData);
+        } else {
+            // Create new
+            pickupData.status = "Pending";
+            pickupData.loggedAt = Timestamp.now();
+            await addDoc(collection(db, "pickups"), pickupData);
+        }
+
+        cancelEdit(); // Reset form and ID
         loadStorePickups();
     };
 
+    // Prepare form for editing
+    window.editPickup = (id, kg, time, freq) => {
+        editingPickupId = id;
+        document.getElementById("pickupKg").value = kg;
+        document.getElementById("pickupTime").value = time;
+        document.getElementById("pickupFreq").value = freq;
+        
+        document.getElementById("formTitle").innerText = "Update Pickup";
+        document.getElementById("btnSavePickup").innerText = "Save Changes";
+        document.getElementById("btnCancelEdit").classList.remove("hidden");
+        
+        toggleCustom();
+        window.scrollTo(0, 0); // Scroll to top to see form
+    };
+
+    window.cancelEdit = () => {
+        editingPickupId = null;
+        document.getElementById("pickupKg").value = "";
+        
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById("pickupTime").value = now.toISOString().slice(0,16);
+        
+        document.getElementById("pickupFreq").value = "one";
+        toggleCustom();
+        
+        document.getElementById("formTitle").innerText = "Schedule Pickup";
+        document.getElementById("btnSavePickup").innerText = "Confirm Pickup";
+        document.getElementById("btnCancelEdit").classList.add("hidden");
+    };
+
+    window.deletePickup = async (id) => {
+        if(confirm("Are you sure you want to permanently delete this record?")) {
+            await deleteDoc(doc(db, "pickups", id));
+            loadStorePickups();
+        }
+    };
+
+    window.markComplete = async (id, isGlobalView = false) => {
+        await updateDoc(doc(db, "pickups", id), {
+            status: "Completed",
+            completedAt: Timestamp.now()
+        });
+        
+        // Refresh the appropriate view
+        if(isGlobalView) loadUpcomingGlobal();
+        else loadStorePickups();
+    };
+
     async function loadStorePickups() {
-        const q = query(collection(db, "pickups"), where("storeId", "==", currentStoreId));
-        const snap = await getDocs(q);
+        const snap = await getDocs(query(collection(db, "pickups"), where("storeId", "==", currentStoreId)));
         const list = document.getElementById("historyList");
         list.innerHTML = snap.empty ? "<p style='color:#cbd5e1; padding:10px;'>No pickups recorded yet.</p>" : "";
 
         let pickups = [];
-        snap.forEach(p => pickups.push(p.data()));
+        snap.forEach(p => pickups.push({ id: p.id, ...p.data() }));
         pickups.sort((a,b) => new Date(b.time) - new Date(a.time));
 
         pickups.forEach(pd => {
             const dateObj = new Date(pd.time);
             const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            const isCompleted = pd.status === "Completed";
+            const statusColor = isCompleted ? "var(--accent)" : "var(--warning)";
+            const statusIcon = isCompleted ? "✅" : "⏳";
             const freqBadge = pd.freq !== "one" ? `<span class="badge">🔁 ${pd.freq}</span>` : '';
             
-            list.innerHTML += `<div class="list-item" style="flex-direction:column; align-items:flex-start;">
-                <div style="display:flex; justify-content:space-between; width:100%;">
-                    <span>${dateStr} ${freqBadge}</span>
-                    <strong>📦 ${pd.kg} KG</strong>
-                </div>
-            </div>`;
+            let actionButtons = '';
+            if(!isCompleted) {
+                // If pending, allow Edit, Delete, and Complete
+                actionButtons = `
+                    <div style="margin-top: 10px; display:flex; gap:5px; width:100%;">
+                        <button class="icon-btn btn-complete" style="margin:0; flex:2;" onclick="markComplete('${pd.id}')">✅ Complete</button>
+                        <button class="icon-btn btn-edit" style="flex:1;" onclick="editPickup('${pd.id}', '${pd.kg}', '${pd.time}', '${pd.freq}')">Edit</button>
+                        <button class="icon-btn btn-delete" style="flex:1;" onclick="deletePickup('${pd.id}')">Del</button>
+                    </div>
+                `;
+            } else {
+                // If completed, only allow delete to keep records clean
+                actionButtons = `
+                    <div style="margin-top: 10px; text-align:right; width:100%;">
+                        <button class="icon-btn btn-delete" onclick="deletePickup('${pd.id}')">Delete Record</button>
+                    </div>
+                `;
+            }
+            
+            list.innerHTML += `
+                <div class="list-item" style="flex-direction:column; align-items:flex-start; border-left: 3px solid ${statusColor}; background: rgba(0,0,0,0.2);">
+                    <div style="display:flex; justify-content:space-between; width:100%;">
+                        <span>${statusIcon} ${dateStr} ${freqBadge}</span>
+                        <strong>📦 ${pd.kg} KG</strong>
+                    </div>
+                    ${actionButtons}
+                </div>`;
         });
     }
 
