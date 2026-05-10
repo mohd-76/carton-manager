@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 
-<meta charset="UTF-8" />
+<meta charset="UTF-8">
 
 <meta name="viewport"
-      content="width=device-width, initial-scale=1.0"/>
+      content="width=device-width, initial-scale=1.0">
 
 <title>Carton Manager Pro</title>
 
@@ -142,10 +142,6 @@ button{
     background:#263548;
 }
 
-.list-item:last-child{
-    border-bottom:none;
-}
-
 .small{
     color:var(--muted);
     font-size:13px;
@@ -155,7 +151,7 @@ button{
 .badge{
     background:#3b82f6;
     color:white;
-    padding:3px 8px;
+    padding:4px 8px;
     border-radius:6px;
     font-size:11px;
 }
@@ -177,7 +173,7 @@ button{
 
 .store-rank{
     font-size:18px;
-    color:var(--accent);
+    color:#22c55e;
     font-weight:bold;
 }
 
@@ -185,7 +181,6 @@ button{
     display:flex;
     gap:8px;
     margin-top:10px;
-    width:100%;
 }
 
 .action-row button{
@@ -202,9 +197,9 @@ button{
     color:black;
 }
 
-a{
-    color:#22c55e;
-    text-decoration:none;
+.btn-edit{
+    background:#eab308;
+    color:black;
 }
 
 .summary-card{
@@ -215,13 +210,16 @@ a{
     text-align:center;
 }
 
+a{
+    color:#22c55e;
+    text-decoration:none;
+}
+
 </style>
 
 </head>
 
 <body>
-
-<!-- LOADING -->
 
 <div id="loadingPage"
      class="loading-screen">
@@ -230,16 +228,10 @@ a{
 
 </div>
 
-<!-- LOGIN -->
-
 <div id="loginPage"
      class="loading-screen hidden">
 
     <h2>📦 Carton Manager Pro</h2>
-
-    <p style="margin:10px 0;">
-        Global Pickup & Store Network
-    </p>
 
     <button class="action-btn"
             onclick="login()"
@@ -250,8 +242,6 @@ a{
     </button>
 
 </div>
-
-<!-- APP -->
 
 <div id="app"
      class="hidden">
@@ -278,10 +268,7 @@ a{
 
 <div class="container">
 
-<!-- NAVIGATION -->
-
-<div class="nav-tabs"
-     id="mainNav">
+<div class="nav-tabs">
 
     <button class="nav-btn active"
             id="btnAdd"
@@ -333,19 +320,19 @@ a{
                placeholder="Manual Location">
 
         <input id="s_maplink"
-               placeholder="Google Maps Pin Link">
+               placeholder="Google Maps Link">
 
         <input id="s_phone1"
-               placeholder="Primary Phone Number"
-               type="tel">
+               type="tel"
+               placeholder="Primary Phone">
 
         <input id="s_phone2"
-               placeholder="Secondary Phone Number (Optional)"
-               type="tel">
+               type="tel"
+               placeholder="Secondary Phone">
 
         <input id="s_quantity"
                type="number"
-               placeholder="Estimated Quantity (KG)">
+               placeholder="Estimated Quantity KG">
 
         <select id="s_frequency">
 
@@ -360,9 +347,18 @@ a{
         </select>
 
         <button class="action-btn"
+                id="storeSubmitBtn"
                 onclick="addStore()">
 
             Save Store
+
+        </button>
+
+        <button class="secondary-btn hidden"
+                id="cancelEditBtn"
+                onclick="cancelStoreEdit()">
+
+            Cancel Edit
 
         </button>
 
@@ -397,7 +393,7 @@ a{
 
     <div class="card">
 
-        <h3>Upcoming Pickups</h3>
+        <h3>Pending Operations</h3>
 
         <div id="upcomingList"></div>
 
@@ -420,7 +416,7 @@ a{
 
 </div>
 
-<!-- STORE DETAILS -->
+<!-- DETAILS -->
 
 <div id="detailsPage"
      class="tab-content hidden">
@@ -462,7 +458,7 @@ a{
 
     <div class="card">
 
-        <h3>Store Pickup History</h3>
+        <h3>Store History</h3>
 
         <div id="historyList"></div>
 
@@ -471,7 +467,7 @@ a{
     <button class="secondary-btn"
             onclick="switchTab('networkPage')">
 
-        ← Back
+        ← Back To Stores
 
     </button>
 
@@ -529,6 +525,8 @@ const provider = new GoogleAuthProvider();
 
 let currentStoreId = null;
 
+let editingStoreId = null;
+
 let allStoresMap = {};
 
 onAuthStateChanged(auth, async(user)=>{
@@ -556,9 +554,6 @@ onAuthStateChanged(auth, async(user)=>{
         document.getElementById("loginPage")
         .classList.remove("hidden");
 
-        document.getElementById("app")
-        .classList.add("hidden");
-
     }
 
 });
@@ -573,8 +568,6 @@ window.logout = ()=>signOut(auth);
 
 async function cacheStores(){
 
-    if(!auth.currentUser) return;
-
     const snap = await getDocs(
         query(
             collection(db,"stores"),
@@ -584,9 +577,10 @@ async function cacheStores(){
 
     allStoresMap = {};
 
-    snap.forEach(s=>{
+    snap.forEach(docSnap=>{
 
-        allStoresMap[s.id] = s.data().name;
+        allStoresMap[docSnap.id] =
+        docSnap.data().name;
 
     });
 
@@ -604,29 +598,29 @@ window.switchTab = (tabId)=>{
     .forEach(btn=>btn.classList.remove("active"));
 
     if(tabId==="addStorePage")
-        document.getElementById("btnAdd")
-        .classList.add("active");
+    document.getElementById("btnAdd")
+    .classList.add("active");
 
     if(tabId==="networkPage")
-        document.getElementById("btnNetwork")
-        .classList.add("active");
+    document.getElementById("btnNetwork")
+    .classList.add("active");
 
     if(tabId==="upcomingPage")
-        document.getElementById("btnUpcoming")
-        .classList.add("active");
+    document.getElementById("btnUpcoming")
+    .classList.add("active");
 
     if(tabId==="completedPage")
-        document.getElementById("btnCompleted")
-        .classList.add("active");
+    document.getElementById("btnCompleted")
+    .classList.add("active");
 
     if(tabId==="networkPage")
-        loadStores();
+    loadStores();
 
     if(tabId==="upcomingPage")
-        loadUpcoming();
+    loadUpcoming();
 
     if(tabId==="completedPage")
-        loadCompleted();
+    loadCompleted();
 
 };
 
@@ -655,11 +649,11 @@ window.addStore = async()=>{
 
     if(!name || !location || !phone1 || !quantity){
 
-        return alert("Please fill required fields");
+        return alert("Fill all required fields");
 
     }
 
-    await addDoc(collection(db,"stores"),{
+    const storeData = {
 
         name,
         location,
@@ -669,20 +663,119 @@ window.addStore = async()=>{
         quantity:Number(quantity),
         frequency,
         userId:auth.currentUser.uid,
-        createdAt:Timestamp.now()
 
-    });
+    };
 
-    document.getElementById("s_name").value = "";
-    document.getElementById("s_location").value = "";
-    document.getElementById("s_maplink").value = "";
-    document.getElementById("s_phone1").value = "";
-    document.getElementById("s_phone2").value = "";
-    document.getElementById("s_quantity").value = "";
+    if(editingStoreId){
+
+        await updateDoc(
+            doc(db,"stores",editingStoreId),
+            storeData
+        );
+
+        alert("Store Updated");
+
+    }else{
+
+        storeData.createdAt = Timestamp.now();
+
+        await addDoc(collection(db,"stores"),storeData);
+
+        alert("Store Added");
+
+    }
+
+    clearStoreForm();
 
     await cacheStores();
 
     switchTab("networkPage");
+
+};
+
+function clearStoreForm(){
+
+    editingStoreId = null;
+
+    document.getElementById("s_name").value = "";
+
+    document.getElementById("s_location").value = "";
+
+    document.getElementById("s_maplink").value = "";
+
+    document.getElementById("s_phone1").value = "";
+
+    document.getElementById("s_phone2").value = "";
+
+    document.getElementById("s_quantity").value = "";
+
+    document.getElementById("s_frequency").value = "daily";
+
+    document.getElementById("storeSubmitBtn")
+    .innerText = "Save Store";
+
+    document.getElementById("cancelEditBtn")
+    .classList.add("hidden");
+
+}
+
+window.cancelStoreEdit = ()=>{
+
+    clearStoreForm();
+
+};
+
+window.editStore = (
+    id,
+    name,
+    location,
+    maplink,
+    phone1,
+    phone2,
+    quantity,
+    frequency
+)=>{
+
+    editingStoreId = id;
+
+    switchTab("addStorePage");
+
+    document.getElementById("s_name").value = name;
+
+    document.getElementById("s_location").value = location;
+
+    document.getElementById("s_maplink").value = maplink;
+
+    document.getElementById("s_phone1").value = phone1;
+
+    document.getElementById("s_phone2").value = phone2;
+
+    document.getElementById("s_quantity").value = quantity;
+
+    document.getElementById("s_frequency").value = frequency;
+
+    document.getElementById("storeSubmitBtn")
+    .innerText = "Update Store";
+
+    document.getElementById("cancelEditBtn")
+    .classList.remove("hidden");
+
+};
+
+window.deleteStore = async(id)=>{
+
+    const ok =
+    confirm("Delete store permanently?");
+
+    if(!ok) return;
+
+    await deleteDoc(doc(db,"stores",id));
+
+    alert("Store Deleted");
+
+    await cacheStores();
+
+    loadStores();
 
 };
 
@@ -698,12 +791,8 @@ function getQtyClass(qty){
 
 async function loadStores(){
 
-    if(!auth.currentUser) return;
-
     const list =
     document.getElementById("storesList");
-
-    list.innerHTML = "Loading...";
 
     const snap = await getDocs(
         query(
@@ -726,27 +815,6 @@ async function loadStores(){
     });
 
     stores.sort((a,b)=>b.quantity-a.quantity);
-
-    const search =
-    document.getElementById("searchStore")
-    .value.toLowerCase();
-
-    stores = stores.filter(store=>
-
-        store.name.toLowerCase().includes(search)
-        ||
-        store.location.toLowerCase().includes(search)
-
-    );
-
-    if(stores.length===0){
-
-        list.innerHTML =
-        "<p>No stores found</p>";
-
-        return;
-
-    }
 
     list.innerHTML = "";
 
@@ -786,50 +854,48 @@ async function loadStores(){
 
                 </div>
 
-                ${
-                    store.phone2
-                    ?
-                    `
-                    <div class="small">
-                        ☎ ${store.phone2}
-                    </div>
-                    `
-                    :
-                    ""
-                }
-
                 <div class="${getQtyClass(store.quantity)}">
 
                     📦 ${store.quantity} KG
 
                 </div>
 
-                <div class="small">
-
-                    🔁 ${store.frequency}
-
-                </div>
-
-                ${
-                    store.maplink
-                    ?
-                    `
-                    <br>
-
-                    <a href="${store.maplink}"
-                       target="_blank">
-
-                       📍 Open Map
-
-                    </a>
-                    `
-                    :
-                    ""
-                }
-
             </div>
 
-            <div>➜</div>
+            <div style="display:flex;
+                        flex-direction:column;
+                        gap:8px;">
+
+                <button class="btn-edit"
+
+                onclick="event.stopPropagation();
+
+                editStore(
+                    '${store.id}',
+                    '${store.name}',
+                    '${store.location}',
+                    '${store.maplink}',
+                    '${store.phone1}',
+                    '${store.phone2}',
+                    '${store.quantity}',
+                    '${store.frequency}'
+                )">
+
+                    Edit
+
+                </button>
+
+                <button class="btn-delete"
+
+                onclick="event.stopPropagation();
+
+                deleteStore('${store.id}')">
+
+                    Delete
+
+                </button>
+
+            </div>
 
         </div>
 
@@ -867,32 +933,16 @@ window.viewStore = async(
 
         <p>📞 ${phone1}</p>
 
-        ${
-            phone2
-            ?
-            `<p>☎ ${phone2}</p>`
-            :
-            ""
-        }
-
         <p>📦 ${quantity} KG</p>
 
         <p>🔁 ${frequency}</p>
 
-        ${
-            maplink
-            ?
-            `
-            <a href="${maplink}"
-               target="_blank">
+        <a href="${maplink}"
+           target="_blank">
 
-               📍 Open Google Maps
+           📍 Open Google Maps
 
-            </a>
-            `
-            :
-            ""
-        }
+        </a>
 
     `;
 
@@ -913,7 +963,7 @@ window.savePickup = async()=>{
 
     if(!time || !kg){
 
-        return alert("Please fill all fields");
+        return alert("Fill all fields");
 
     }
 
@@ -929,7 +979,7 @@ window.savePickup = async()=>{
 
     });
 
-    document.getElementById("pickupKg").value = "";
+    alert("Pickup Scheduled");
 
     loadStoreHistory();
 
@@ -961,91 +1011,70 @@ async function loadStoreHistory(){
     });
 
     pickups.sort((a,b)=>
-
         new Date(b.time)-new Date(a.time)
-
     );
-
-    if(pickups.length===0){
-
-        list.innerHTML =
-        "<p>No pickups yet</p>";
-
-        return;
-
-    }
 
     list.innerHTML = "";
 
     pickups.forEach(p=>{
 
+        const freqBadge =
+        p.freq !== "one"
+        ?
+        `<span class="badge">
+            🔁 ${p.freq}
+        </span>`
+        :
+        '';
+
         list.innerHTML += `
 
-        <div class="list-item"
-             style="flex-direction:column;
-                    align-items:flex-start;">
-
-            <strong>
-
-                📦 ${p.kg} KG
-
-            </strong>
+        <div class="card">
 
             <div class="small">
 
-                ${new Date(p.time)
+                ⏳ ${new Date(p.time)
                 .toLocaleString()}
 
             </div>
 
-            <div class="small">
+            <br>
 
-                🔁 ${p.freq}
+            ${freqBadge}
 
-            </div>
+            <br><br>
 
-            <div class="badge">
+            <h3>
 
-                ${p.status}
+                📦 ${p.kg} KG
 
-            </div>
+            </h3>
 
-            ${
-                p.status !== "Completed"
-                ?
-                `
-                <div class="action-row">
+            <div class="action-row">
 
+                ${
+                    p.status !== "Completed"
+                    ?
+                    `
                     <button class="btn-complete"
                             onclick="markComplete('${p.id}')">
 
                         Complete
 
                     </button>
+                    `
+                    :
+                    ''
+                }
 
-                    <button class="btn-delete"
-                            onclick="deletePickup('${p.id}')">
+                <button class="btn-delete"
+                        onclick="deletePickup('${p.id}')">
 
-                        Delete
+                    Delete
 
-                    </button>
+                </button>
 
-                </div>
-                `
-                :
-                `
-                <div class="action-row">
-
-                    <button class="btn-delete"
-                            onclick="deletePickup('${p.id}')">
-
-                        Delete
-
-                    </button>
-
-                </div>
-                `
-            }
+            </div>
 
         </div>
 
@@ -1069,13 +1098,14 @@ window.markComplete = async(id)=>{
 
 window.deletePickup = async(id)=>{
 
-    if(confirm("Delete pickup?")){
+    const ok =
+    confirm("Delete Pickup?");
 
-        await deleteDoc(doc(db,"pickups",id));
+    if(!ok) return;
 
-        loadStoreHistory();
+    await deleteDoc(doc(db,"pickups",id));
 
-    }
+    loadStoreHistory();
 
 };
 
@@ -1111,60 +1141,57 @@ async function loadUpcoming(){
     });
 
     pickups.sort((a,b)=>
-
         new Date(a.time)-new Date(b.time)
-
     );
-
-    if(pickups.length===0){
-
-        list.innerHTML =
-        "<p>No upcoming pickups</p>";
-
-        return;
-
-    }
 
     list.innerHTML = "";
 
     pickups.forEach(p=>{
 
+        const freqBadge =
+        p.freq !== "one"
+        ?
+        `<span class="badge">
+            🔁 ${p.freq}
+        </span>`
+        :
+        '';
+
         list.innerHTML += `
 
-        <div class="list-item">
+        <div class="card">
 
-            <div>
+            <h2 style="color:#facc15;">
 
-                <strong>
+                ${allStoresMap[p.storeId] || "Store"}
 
-                    ${allStoresMap[p.storeId] || "Store"}
+            </h2>
 
-                </strong>
+            <div class="small">
 
-                <br>
-
-                <small>
-
-                    📦 ${p.kg} KG
-
-                </small>
-
-                <br>
-
-                <small>
-
-                    ${new Date(p.time)
-                    .toLocaleString()}
-
-                </small>
+                📅 ${new Date(p.time)
+                .toLocaleString()}
 
             </div>
 
-            <div class="badge">
+            <br>
 
-                Pending
+            ${freqBadge}
 
-            </div>
+            <br><br>
+
+            <h2>
+
+                📦 ${p.kg} KG
+
+            </h2>
+
+            <button class="btn-complete"
+                    onclick="markComplete('${p.id}')">
+
+                ✅ Mark Order Complete
+
+            </button>
 
         </div>
 
@@ -1210,18 +1237,33 @@ async function loadCompleted(){
     });
 
     pickups.sort((a,b)=>
-
         new Date(b.time)-new Date(a.time)
-
     );
 
     list.innerHTML = `
+
+        <div class="small"
+             style="margin-bottom:10px;">
+
+            Filter by date range
+
+        </div>
+
+        <div style="display:flex;
+                    gap:10px;
+                    margin-bottom:15px;">
+
+            <input type="date">
+
+            <input type="date">
+
+        </div>
 
         <div class="summary-card">
 
             <strong>
 
-                Total Completed:
+                Total Volume:
                 ${total} KG
 
             </strong>
@@ -1234,38 +1276,33 @@ async function loadCompleted(){
 
         list.innerHTML += `
 
-        <div class="list-item">
+        <div class="card">
 
-            <div>
+            <div style="
+                border-left:4px solid #22c55e;
+                padding-left:12px;
+            ">
 
-                <strong>
+                <h2 style="color:#22c55e;">
 
                     ${allStoresMap[p.storeId] || "Store"}
 
-                </strong>
+                </h2>
+
+                <div class="small">
+
+                    ${new Date(p.time)
+                    .toLocaleDateString()}
+
+                </div>
 
                 <br>
 
-                <small>
+                <h3>
 
                     📦 ${p.kg} KG
 
-                </small>
-
-                <br>
-
-                <small>
-
-                    ${new Date(p.time)
-                    .toLocaleString()}
-
-                </small>
-
-            </div>
-
-            <div class="badge">
-
-                Completed
+                </h3>
 
             </div>
 
