@@ -1215,15 +1215,11 @@ async function loadCompleted(){
 
     let pickups = [];
 
-    let total = 0;
-
     snap.forEach(docSnap=>{
 
         const data = docSnap.data();
 
         if(data.status === "Completed"){
-
-            total += Number(data.kg);
 
             pickups.push({
 
@@ -1249,32 +1245,126 @@ async function loadCompleted(){
 
         </div>
 
-        <div style="display:flex;
-                    gap:10px;
-                    margin-bottom:15px;">
+        <div style="
+            display:flex;
+            gap:10px;
+            margin-bottom:15px;
+        ">
 
-            <input type="date">
+            <input type="date"
+                   id="fromDate"
+                   onchange="filterCompleted()">
 
-            <input type="date">
+            <input type="date"
+                   id="toDate"
+                   onchange="filterCompleted()">
+
+        </div>
+
+        <div class="summary-card"
+             id="totalVolumeCard">
 
         </div>
 
-        <div class="summary-card">
-
-            <strong>
-
-                Total Volume:
-                ${total} KG
-
-            </strong>
-
-        </div>
+        <div id="completedItems"></div>
 
     `;
 
+    window.completedPickupsData = pickups;
+
+    renderCompletedPickups(pickups);
+
+}
+
+window.filterCompleted = ()=>{
+
+    const fromDate =
+    document.getElementById("fromDate").value;
+
+    const toDate =
+    document.getElementById("toDate").value;
+
+    let filtered =
+    [...window.completedPickupsData];
+
+    if(fromDate){
+
+        filtered = filtered.filter(p=>{
+
+            return new Date(p.time)
+            >= new Date(fromDate);
+
+        });
+
+    }
+
+    if(toDate){
+
+        const endDate = new Date(toDate);
+
+        endDate.setHours(23,59,59,999);
+
+        filtered = filtered.filter(p=>{
+
+            return new Date(p.time)
+            <= endDate;
+
+        });
+
+    }
+
+    renderCompletedPickups(filtered);
+
+};
+
+function renderCompletedPickups(pickups){
+
+    const items =
+    document.getElementById("completedItems");
+
+    const totalCard =
+    document.getElementById("totalVolumeCard");
+
+    let total = 0;
+
     pickups.forEach(p=>{
 
-        list.innerHTML += `
+        total += Number(p.kg);
+
+    });
+
+    totalCard.innerHTML = `
+
+        <strong>
+
+            Total Volume:
+            ${total} KG
+
+        </strong>
+
+    `;
+
+    if(pickups.length===0){
+
+        items.innerHTML = `
+
+            <p class="small">
+
+                No completed pickups found
+
+            </p>
+
+        `;
+
+        return;
+
+    }
+
+    items.innerHTML = "";
+
+    pickups.forEach(p=>{
+
+        items.innerHTML += `
 
         <div class="card">
 
@@ -1312,8 +1402,7 @@ async function loadCompleted(){
 
     });
 
-}
-
+}      
 </script>
 
 </body>
